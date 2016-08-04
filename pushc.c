@@ -294,7 +294,7 @@ int m_stack_boolean_pop(m_machine_t *m) {
   return *((int*)m_stack_pop(&m->boolean, sizeof(m_boolean_t)));
 }
 
-m_exec_t m_stack_exec_length(m_machine_t *m) {
+int m_stack_exec_length(m_machine_t *m) {
   // TODO
   return m->exec.position / sizeof(m_exec_t);
 }
