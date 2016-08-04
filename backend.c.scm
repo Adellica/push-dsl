@@ -86,13 +86,14 @@
 
 ;; recursive core of the code generation. this will rewrite bits to
 ;; fit into C and expand define-instructions and friends.
-(define (rewrite body env)
+(define (rewrite body env tt)
 
   ;; luckily, type inference isn't that hard easy because type == stack
   (define (infer-type e #!optional (env env))
     (or (let infer-type ((e e))
           (cond ((symbol? e) (alist-ref e env))
                 ((and (pair? e) (eq? 'quote (car e))) 'op) ;; eg (quote integer.+)
+                ((and (pair? e) (eq? 'cons  (car e))) 'obj)
                 ((pair? e)   (car (filter-map infer-type (cdr e)))) ;; TODO: length > 1 => error
                 ((eq? e #f)  'boolean)
                 ((eq? e #t)  'boolean)
@@ -112,7 +113,7 @@
        ,(cat nl (columnar "// " (cat op nl (with-output-to-string (lambda () (pp spec))))))
        ;; function body
        (%fun void ,(identifier op) (((%pointer m_machine_t) m))
-             ,(rewrite `(let-pop ,@spec) env))))
+             ,(rewrite `(let-pop ,@spec) env #f))))
 
     (('let-pop (specs ...) body ...)
 
@@ -126,19 +127,24 @@
                  env)))
        `(%begin (if ,(pop-check specs) (return))
                 ,(pop-declare specs)
-                ,(rewrite `(begin ,@body) env))))
+                ,(rewrite `(begin ,@body) env #f))))
 
-    (('= args ...) `(== ,@(rewrite args env)))
+    (('cons a b) `(m_obj_cons ,(rewrite a env 'obj)
+                              ,(rewrite b env 'obj)))
 
-    (('or  args ...) (apply c-or* (rewrite args env)))
-    (('and args ...) `(&& ,@(rewrite args env)))
-    (('not args ...) `(!  ,@(rewrite args env)))
+    (('= args ...) `(== ,@(rewrite args env tt)))
 
-    (('begin body ...) `(%begin ,@(map (cut rewrite <> env) body)))
+    (('or  args ...) (apply c-or* (rewrite args env 'boolean)))
+    (('and args ...) `(&& ,@(rewrite args env 'boolean)))
+    (('not args ...) `(!  ,@(rewrite args env 'boolean)))
+
+    (('begin body ...) `(%begin ,@(map (cut rewrite <> env #f) body)))
     (('void body ...)  `(%begin 1))
 
     (('quote op)
-     (op->identifier op))
+     (case tt
+       ((obj) `(,(requires 'm_obj_from_op) ,(op->identifier op)))
+       (else (op->identifier op))))
 
     ;; ;; quoted symbols are special: they mean the op literal
     ;; (('push stack ('quote op))
@@ -147,21 +153,22 @@
     ;;     ,(op->identifier op))))
 
     (('push stack e)
-     (let ((type (infer-type e)))
+     (let ((type (stack-type (infer-type e)))
+           (stype (stack-type stack)))
        `(,(requires (sconc "m_stack_" stack "_push")) m
-         ,(if (eq? type stack)
-              ;; type = stack, no conversion needed
-              (rewrite e env)
+         ,(if (eq? type stype)
+              ;; type = stack, no conversion needed, but force type
+              (rewrite e env type)
               ;; type ≠ stack, only possible for dynamically typed stacks (eg. exec)
-              `(,(requires (sconc "m_" (stack-type stack) "_from_" type))
-                ,(rewrite e env))))))
+              `(,(requires (sconc "m_" stype "_from_" type))
+                ,(rewrite e env type))))))
 
     ((lst ...)  `(,(match (car lst)
                      ('max 'm_max)
                      ('min 'm_min)
                      ('modulo '%)
                      (e e))
-                  ,@(map (cut rewrite <> env) (cdr lst))))
+                  ,@(map (cut rewrite <> env tt) (cdr lst))))
 
     ((? symbol? s) (identifier s))
 
@@ -176,7 +183,7 @@
 
 ;; now serialize to C!
 (let ((expr (rewrite `(%begin ,@(with-input-from-file filename
-                                  (lambda () (port-fold cons '() read)))) '())))
+                                  (lambda () (port-fold cons '() read)))) '() #f)))
 
   (with-output-to-file (conc filename ".gen.c")
     (lambda ()
