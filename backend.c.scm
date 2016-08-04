@@ -55,7 +55,6 @@
 ;; stacks are statically typed (type = name), except the code and the
 ;; exec stacks which can contain data for all the other stacks.
 (define (stack-type stack)
-  (hash-table-set! ht-seen-types stack #t)
   (case stack
     ((exec code) 'obj)
     (else stack)))
