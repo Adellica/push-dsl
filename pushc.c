@@ -164,12 +164,16 @@ void write(m_obj_t *obj) {
     printf("%s", lookup(m_obj_to_op(obj)));
     break;
   case 0:
-    // it must be a pointer to an m_obj_t
-
-    printf("(");
-    write_pair(obj);
-    printf(")");
-    break;
+    if(obj == &the_empty_list) {
+      printf("()");
+      break;
+    } else {
+      // it must be a pointer to an m_obj_t
+      printf("(");
+      write_pair(obj);
+      printf(")");
+      break;
+    }
   }
 }
 
