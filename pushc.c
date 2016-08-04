@@ -93,19 +93,19 @@ m_obj_t *m_obj_cons(m_obj_t *car, m_obj_t *cdr) {
 /*   return obj->type == M_TYPE_PAIR; */
 /* } */
 
-m_obj_t *car(m_obj_t *pair) {
+m_obj_t *m_obj_car(m_obj_t *pair) {
   return pair->data.pair.car;
 }
 
-void set_car(m_obj_t *obj, m_obj_t* value) {
+void m_obj_set_car(m_obj_t *obj, m_obj_t* value) {
   obj->data.pair.car = value;
 }
 
-m_obj_t *cdr(m_obj_t *pair) {
+m_obj_t *m_obj_cdr(m_obj_t *pair) {
   return pair->data.pair.cdr;
 }
 
-void set_cdr(m_obj_t *obj, m_obj_t* value) {
+void m_obj_set_cdr(m_obj_t *obj, m_obj_t* value) {
   obj->data.pair.cdr = value;
 }
 
@@ -133,8 +133,8 @@ void write_pair(m_obj_t *pair) {
   m_obj_t *car_obj;
   m_obj_t *cdr_obj;
     
-  car_obj = car(pair);
-  cdr_obj = cdr(pair);
+  car_obj = m_obj_car(pair);
+  cdr_obj = m_obj_cdr(pair);
   write(car_obj);
   if (m_typeof_obj(cdr_obj) == M_TYPE_PAIR) {
     printf(" ");

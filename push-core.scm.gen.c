@@ -466,9 +466,21 @@ int m_apply (m_machine_t *m) {
         return 0;
     }
     m_exec_t instruction = m_stack_exec_pop(m);
-    if (m_typeof_obj(instruction) == M_TYPE_OP) {
-        return m_apply_op(m, m_obj_to_op(instruction));
-    } else {
-        return m_apply_literal(m, instruction);
+    int ret;
+    
+  retry:
+    switch (m_typeof_obj(instruction)) {
+        case M_TYPE_OP:
+            ret = m_apply_op(m, m_obj_to_op(instruction));
+            break;
+        case M_TYPE_PAIR:
+            m_stack_exec_push(m, m_obj_cdr(instruction));
+            instruction = m_obj_car(instruction);
+            goto retry;
+            break;
+        default:
+            ret = m_apply_literal(m, instruction);
+            break;
     }
+    return ret;
 }
