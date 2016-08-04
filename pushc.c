@@ -221,10 +221,6 @@ void m_stack_t_ensure_size(m_stack_t *stack, int size) {
   }
 }
 
-int m_stack_t_isempty(m_stack_t *stack) {
-  return stack->position <= 0;
-}
-
 void m_stack_push(m_stack_t *stack, void* data, tf_size len) {
   m_stack_t_ensure_size(stack, len);
   void* block = m_stack_t_pt(stack);
