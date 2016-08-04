@@ -14,7 +14,7 @@ typedef unsigned char m_op_t;
 // ==================== dynamic types
 
 typedef struct m_obj_t {
-  unsigned char type;
+  unsigned char __type_; // careful when accessing this! make sure lower 2 bits are 0
   union {
     struct {
       struct m_obj_t *car;
@@ -83,7 +83,7 @@ m_obj_t *m_obj_cons(m_obj_t *car, m_obj_t *cdr) {
   m_obj_t *obj;
     
   obj = alloc_object();
-  obj->type = M_TYPE_PAIR;
+  obj->__type_ = M_TYPE_PAIR;
   obj->data.pair.car = car;
   obj->data.pair.cdr = cdr;
   return obj;
@@ -117,7 +117,7 @@ int m_typeof_obj(m_obj_t *obj) {
   case M_IMASK_INTEGER: return M_IMASK_INTEGER;
   case M_IMASK_OP: return M_IMASK_OP;
   case 0:
-    switch (obj->type) {
+    switch (obj->__type_) {
     case M_TYPE_NIL: return M_TYPE_NIL;
     case M_TYPE_PAIR: return M_TYPE_PAIR;
     }
