@@ -2,7 +2,7 @@
 /// 
 /// m_op_t should be defined as some integer (switchable) type
 // you'll need to implement these functions: 
-// m_typeof_exec
+// m_typeof_obj
 // m_stack_integer_push
 // m_stack_integer_pop
 // m_stack_integer_length
@@ -12,12 +12,12 @@
 // m_stack_boolean_push
 // m_stack_boolean_pop
 // m_stack_boolean_length
-// m_convert_integer_from_exec
-// m_convert_integer_from_boolean
-// m_convert_exec_from_op
-// m_convert_exec_from_integer
-// m_convert_boolean_from_integer
-// m_convert_boolean_from_exec
+// m_obj_to_integer
+// m_obj_to_boolean
+// m_obj_from_op
+// m_obj_from_integer
+// m_integer_from_boolean
+// m_boolean_from_integer
 int m_max (int a, int b) {
     if (a > b) {
         return a;
@@ -117,10 +117,10 @@ void exec_do_star_times (m_machine_t *m) {
     m_exec_t todo = m_stack_exec_pop(m);
     m_integer_t num_minus_times = m_stack_integer_pop(m);
     m_stack_exec_push(m, todo);
-    m_stack_exec_push(m, m_convert_exec_from_op(OP_INTEGER_POP));
-    m_stack_exec_push(m, m_convert_exec_from_op(OP_EXEC_DO_STAR_RANGE));
-    m_stack_exec_push(m, m_convert_exec_from_integer((num_minus_times - 1)));
-    m_stack_exec_push(m, m_convert_exec_from_integer(0));
+    m_stack_exec_push(m, m_obj_from_op(OP_INTEGER_POP));
+    m_stack_exec_push(m, m_obj_from_op(OP_EXEC_DO_STAR_RANGE));
+    m_stack_exec_push(m, m_obj_from_integer((num_minus_times - 1)));
+    m_stack_exec_push(m, m_obj_from_integer(0));
 }
 
 // exec.do*count
@@ -136,9 +136,9 @@ void exec_do_star_count (m_machine_t *m) {
     m_exec_t todo = m_stack_exec_pop(m);
     m_integer_t num_minus_times = m_stack_integer_pop(m);
     m_stack_exec_push(m, todo);
-    m_stack_exec_push(m, m_convert_exec_from_op(OP_EXEC_DO_STAR_RANGE));
-    m_stack_exec_push(m, m_convert_exec_from_integer((num_minus_times - 1)));
-    m_stack_exec_push(m, m_convert_exec_from_integer(0));
+    m_stack_exec_push(m, m_obj_from_op(OP_EXEC_DO_STAR_RANGE));
+    m_stack_exec_push(m, m_obj_from_integer((num_minus_times - 1)));
+    m_stack_exec_push(m, m_obj_from_integer(0));
 }
 
 // exec.do*range
@@ -164,12 +164,12 @@ void exec_do_star_range (m_machine_t *m) {
         1;
     } else {
         m_stack_exec_push(m, todo);
-        m_stack_exec_push(m, m_convert_exec_from_op(OP_EXEC_DO_STAR_RANGE));
-        m_stack_exec_push(m, m_convert_exec_from_integer(destination));
+        m_stack_exec_push(m, m_obj_from_op(OP_EXEC_DO_STAR_RANGE));
+        m_stack_exec_push(m, m_obj_from_integer(destination));
         m_stack_exec_push(m,
-                          m_convert_exec_from_integer((current > destination) ? (current
-                                                                                   - 1) : (current
-                                                                                             + 1)));
+                          m_obj_from_integer((current > destination) ? (current
+                                                                          - 1) : (current
+                                                                                    + 1)));
     }
     m_stack_exec_push(m, todo);
 }
@@ -198,7 +198,7 @@ void boolean_frominteger (m_machine_t *m) {
         return;
     }
     m_integer_t i0 = m_stack_integer_pop(m);
-    m_stack_boolean_push(m, m_convert_boolean_from_integer(i0));
+    m_stack_boolean_push(m, m_boolean_from_integer(i0));
 }
 
 // boolean.not
@@ -240,7 +240,7 @@ void integer_fromboolean (m_machine_t *m) {
         return;
     }
     m_boolean_t b = m_stack_boolean_pop(m);
-    m_stack_integer_push(m, m_convert_integer_from_boolean(b));
+    m_stack_integer_push(m, m_integer_from_boolean(b));
 }
 
 // integer.max
@@ -273,7 +273,7 @@ void integer__gt_ (m_machine_t *m) {
     }
     m_integer_t e0 = m_stack_integer_pop(m);
     m_integer_t e1 = m_stack_integer_pop(m);
-    m_stack_boolean_push(m, m_convert_boolean_from_integer((e1 > e0)));
+    m_stack_boolean_push(m, m_boolean_from_integer((e1 > e0)));
 }
 
 // integer.<
@@ -284,7 +284,7 @@ void integer__lt_ (m_machine_t *m) {
     }
     m_integer_t e0 = m_stack_integer_pop(m);
     m_integer_t e1 = m_stack_integer_pop(m);
-    m_stack_boolean_push(m, m_convert_boolean_from_integer((e1 < e0)));
+    m_stack_boolean_push(m, m_boolean_from_integer((e1 < e0)));
 }
 
 // integer.%
@@ -452,12 +452,12 @@ int m_apply_op (m_machine_t *m, m_op_t op) {
 
 int m_apply_literal (m_machine_t *m, m_exec_t literal) {
     printf("=== applying literal %08x\n", literal);
-    switch (m_typeof_exec(literal)) {
-        case M_EXEC_TYPE_BOOLEAN:
-            m_stack_boolean_push(m, m_convert_boolean_from_exec(literal));
+    switch (m_typeof_obj(literal)) {
+        case M_TYPE_INTEGER:
+            m_stack_integer_push(m, m_obj_to_integer(literal));
             break;
-        case M_EXEC_TYPE_INTEGER:
-            m_stack_integer_push(m, m_convert_integer_from_exec(literal));
+        case M_TYPE_BOOLEAN:
+            m_stack_boolean_push(m, m_obj_to_boolean(literal));
             break;
     }
     return 1;
@@ -468,8 +468,8 @@ int m_apply (m_machine_t *m) {
         return 0;
     }
     m_exec_t instruction = m_stack_exec_pop(m);
-    if (m_typeof_exec(instruction) == M_EXEC_TYPE_OP) {
-        return m_apply_op(m, m_convert_op_from_exec(instruction));
+    if (m_typeof_obj(instruction) == M_TYPE_OP) {
+        return m_apply_op(m, m_obj_to_op(instruction));
     } else {
         return m_apply_literal(m, instruction);
     }

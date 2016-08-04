@@ -47,9 +47,18 @@
 ;; m_convert_... arise from uses of these types.
 (define ht-seen-types (make-hash-table))
 (define (seen-types) (hash-table-keys ht-seen-types))
-(define (stack-type stack)
+(define (stack-c-type stack)
   (hash-table-set! ht-seen-types stack #t)
   (sconc "m_" stack "_t"))
+
+;; here's something very special of this stack-based machine: all
+;; stacks are statically typed (type = name), except the code and the
+;; exec stacks which can contain data for all the other stacks.
+(define (stack-type stack)
+  (hash-table-set! ht-seen-types stack #t)
+  (case stack
+    ((exec code) 'obj)
+    (else stack)))
 
 ;; call a pop operation on type/stack
 (define (pop type)
@@ -62,7 +71,7 @@
        (lambda (spec)
          (let ((stack (cadr spec))) ;; integer, boolean etc
            (map (lambda (var)
-                  `(%var ,(stack-type stack) ,(identifier var) ,(pop stack)))
+                  `(%var ,(stack-c-type stack) ,(identifier var) ,(pop stack)))
                 (car spec))))
        specs)))
 
@@ -99,9 +108,12 @@
 
     (('define-instruction op spec ...)
      (hash-table-set! ht-instruction-table op (+ 1 (hash-table-size ht-instruction-table)))
-     `(%begin ,(cat nl (columnar "// " (cat op nl (with-output-to-string (lambda () (pp spec))))))
-              (%fun void ,(identifier op) (((%pointer m_machine_t) m))
-                    ,(rewrite `(let-pop ,@spec) env))))
+     `(%begin
+       ;; function comment
+       ,(cat nl (columnar "// " (cat op nl (with-output-to-string (lambda () (pp spec))))))
+       ;; function body
+       (%fun void ,(identifier op) (((%pointer m_machine_t) m))
+             ,(rewrite `(let-pop ,@spec) env))))
 
     (('let-pop (specs ...) body ...)
 
@@ -126,18 +138,23 @@
     (('begin body ...) `(%begin ,@(map (cut rewrite <> env) body)))
     (('void body ...)  `(%begin 1))
 
-    ;; quoted symbols are special: they mean the op literal
-    (('push stack ('quote op))
-     `(,(requires (sconc "m_stack_" stack "_push")) m
-       (,(requires (sconc "m_convert_"  stack "_from_op"))
-        ,(op->identifier op))))
+    (('quote op)
+     (op->identifier op))
+
+    ;; ;; quoted symbols are special: they mean the op literal
+    ;; (('push stack ('quote op))
+    ;;  `(,(requires (sconc "m_stack_" stack "_push")) m
+    ;;    (,(requires (sconc "m_convert_"  stack "_from_op"))
+    ;;     ,(op->identifier op))))
 
     (('push stack e)
      (let ((type (infer-type e)))
        `(,(requires (sconc "m_stack_" stack "_push")) m
          ,(if (eq? type stack)
-              (rewrite e env) ;; no conversion needed
-              `(,(requires (sconc "m_convert_" stack "_from_" type))
+              ;; type = stack, no conversion needed
+              (rewrite e env)
+              ;; type ≠ stack, only possible for dynamically typed stacks (eg. exec)
+              `(,(requires (sconc "m_" (stack-type stack) "_from_" type))
                 ,(rewrite e env))))))
 
     ((lst ...)  `(,(match (car lst)
@@ -180,13 +197,13 @@
         `(%fun int m_apply_literal (((%pointer m_machine_t) m)
                                     (m_exec_t literal))
                (printf "=== applying literal %08x\n" literal)
-               (switch ,(c-expr `(,(requires 'm_typeof_exec) literal))
+               (switch ,(c-expr `(,(requires 'm_typeof_obj) literal))
                        ,@(map
                           (lambda (type)
-                            `(case ,(sconc "M_EXEC_TYPE_" (string-upcase (conc type)))
+                            `(case ,(sconc "M_TYPE_" (string-upcase (conc type)))
                                (,(requires (sconc "m_stack_" type "_push"))
                                 m
-                                (,(requires (sconc "m_convert_" type "_from_exec"))
+                                (,(requires (sconc "m_obj_to_" type))
                                  literal))))
                           (delete 'exec (seen-types))))
                1))
@@ -224,8 +241,8 @@
               `(%fun int m_apply (((%pointer m_machine_t) m))
                      (if ,(pop-check specs) (return 0))
                      ,(pop-declare specs)
-                     (if (== (,(requires 'm_typeof_exec) instruction) M_EXEC_TYPE_OP)
-                         (m_apply_op m (,(requires 'm_convert_op_from_exec)
+                     (if (== (,(requires 'm_typeof_obj) instruction) M_TYPE_OP)
+                         (m_apply_op m (,(requires 'm_obj_to_op)
                                         instruction))
                          (m_apply_literal m instruction)))))))))
 

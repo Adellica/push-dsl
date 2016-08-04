@@ -3,10 +3,181 @@
 #include <stdio.h>
 #include <string.h>
 
-typedef unsigned char m_op_t;
-typedef unsigned int  m_exec_t;
+#include <assert.h>
+
+// ==================== static types
+
 typedef unsigned char m_boolean_t;
 typedef signed   int  m_integer_t;
+typedef unsigned char m_op_t;
+
+// ==================== dynamic types
+
+typedef struct m_obj_t {
+  unsigned char type;
+  union {
+    struct {
+      struct m_obj_t *car;
+      struct m_obj_t *cdr;
+    } pair;
+  } data;
+} m_obj_t;
+
+/* no GC so truely "unlimited extent" */
+m_obj_t *alloc_object(void) {
+  m_obj_t *obj;
+
+  obj = malloc(sizeof(m_obj_t));
+  printf("                                        ALLOC: %p\n", obj);
+  if (obj == NULL) {
+    fprintf(stderr, "out of memory\n");
+    exit(1);
+  }
+  return obj;
+}
+
+
+// immediate masks. if lower bits are 00, it's pointer to an object
+//#define M_IMASK_PAIR      0b00
+#define M_IMASK_INTEGER   0b01
+#define M_IMASK_BOOLEAN   0b10
+#define M_IMASK_OP        0b11
+
+#define M_TYPE_INTEGER   M_IMASK_INTEGER
+#define M_TYPE_BOOLEAN   M_IMASK_BOOLEAN
+#define M_TYPE_OP        M_IMASK_OP
+#define M_TYPE_PAIR      0b100
+#define M_TYPE_NIL       0b101
+
+m_obj_t the_empty_list = { M_TYPE_NIL };
+
+char is_the_empty_list(m_obj_t *obj) {
+  return obj == &the_empty_list;
+}
+
+m_obj_t *m_obj_from_integer(int value) {
+  return (void*)((long)(value << 2) | M_IMASK_INTEGER);
+}
+int m_obj_to_integer(m_obj_t *obj) {
+  assert(((long)obj & M_IMASK_INTEGER) == M_IMASK_INTEGER);
+  return (long)obj >> 2;
+}
+
+m_obj_t *m_obj_from_boolean(m_boolean_t value) {
+  return (void*)(((long)value << 2) | M_IMASK_BOOLEAN);
+}
+m_boolean_t m_obj_to_boolean(m_obj_t *obj) {
+  assert(((long)obj & M_IMASK_BOOLEAN) == M_IMASK_BOOLEAN);
+  return (long)obj >> 2;
+}
+
+m_obj_t *m_obj_from_op(m_op_t value) {
+  return (void*)(((long)value << 2) | M_IMASK_OP);
+}
+m_op_t m_obj_to_op(m_obj_t *obj) {
+  assert(((long)obj & M_IMASK_OP) == M_IMASK_OP);
+  return (long)obj >> 2;
+}
+
+m_obj_t *cons(m_obj_t *car, m_obj_t *cdr) {
+  m_obj_t *obj;
+    
+  obj = alloc_object();
+  obj->type = M_TYPE_PAIR;
+  obj->data.pair.car = car;
+  obj->data.pair.cdr = cdr;
+  return obj;
+}
+
+/* char is_pair(m_obj_t *obj) { */
+/*   return obj->type == M_TYPE_PAIR; */
+/* } */
+
+m_obj_t *car(m_obj_t *pair) {
+  return pair->data.pair.car;
+}
+
+void set_car(m_obj_t *obj, m_obj_t* value) {
+  obj->data.pair.car = value;
+}
+
+m_obj_t *cdr(m_obj_t *pair) {
+  return pair->data.pair.cdr;
+}
+
+void set_cdr(m_obj_t *obj, m_obj_t* value) {
+  obj->data.pair.cdr = value;
+}
+
+
+int m_typeof_obj(m_obj_t *obj) {
+
+  switch ((long)obj & 0b11) {
+  case M_IMASK_BOOLEAN: return M_IMASK_BOOLEAN;
+  case M_IMASK_INTEGER: return M_IMASK_INTEGER;
+  case M_IMASK_OP: return M_IMASK_OP;
+  case 0:
+    switch (obj->type) {
+    case M_TYPE_NIL: return M_TYPE_NIL;
+    case M_TYPE_PAIR: return M_TYPE_PAIR;
+    }
+    // it must be a pointer to an m_obj_t
+  }
+  printf("error: could not find type for object at %p\n", obj);
+  exit(-1);
+}
+
+void write(m_obj_t *obj);
+
+void write_pair(m_obj_t *pair) {
+  m_obj_t *car_obj;
+  m_obj_t *cdr_obj;
+    
+  car_obj = car(pair);
+  cdr_obj = cdr(pair);
+  write(car_obj);
+  if (cdr_obj->type == M_TYPE_PAIR) {
+    printf(" ");
+    write_pair(cdr_obj);
+  }
+  else if (cdr_obj->type == M_TYPE_NIL) {
+    return;
+  }
+  else {
+    printf(" . ");
+    write(cdr_obj);
+  }
+}
+
+char *lookup (m_op_t);
+
+void write(m_obj_t *obj) {
+  //printf("== write object: %p\n", obj);
+  switch ((long)obj & 0b11) {
+  case M_IMASK_BOOLEAN:
+    printf("#%c", m_obj_to_boolean(obj) ? 't' : 'f');
+    break;
+  case M_IMASK_INTEGER:
+    printf("%ld", m_obj_to_integer(obj));
+    break;
+  case M_IMASK_OP:
+    printf("%s", lookup(m_obj_to_op(obj)));
+    break;
+  case 0:
+    // it must be a pointer to an m_obj_t
+
+    printf("(");
+    write_pair(obj);
+    printf(")");
+    break;
+  }
+}
+
+
+
+
+
+typedef m_obj_t   *m_exec_t;
 
 typedef unsigned int tf_size;
 typedef unsigned char tf_type;
@@ -138,40 +309,15 @@ m_exec_t m_stack_exec_pop(m_machine_t *m) {
 
 // ==================== type conversion
 
-#define M_OP_MASK             0xf0000000
-#define M_EXEC_TYPE_OP        0x10000000
-#define M_EXEC_TYPE_INTEGER   0x20000000
-#define M_EXEC_TYPE_BOOLEAN   0x30000000
 
-m_exec_t m_convert_exec_from_op(m_op_t value) {
-  return M_EXEC_TYPE_OP | value;
-}
-
-m_exec_t m_convert_exec_from_integer(m_integer_t value) {
-  return M_EXEC_TYPE_INTEGER | value;
-}
-m_boolean_t m_convert_boolean_from_integer(m_integer_t value) {
+m_boolean_t m_boolean_from_integer(m_integer_t value) {
   return value;
 }
-m_integer_t m_convert_integer_from_boolean(m_boolean_t value) {
+m_integer_t m_integer_from_boolean(m_boolean_t value) {
   return value;
 }
 
-m_integer_t m_convert_integer_from_exec(m_exec_t value) {
-  return (~M_EXEC_TYPE_INTEGER & value);
-}
-m_boolean_t m_convert_boolean_from_exec(m_exec_t value) {
-  return ~M_EXEC_TYPE_BOOLEAN & value;
-}
-m_op_t m_convert_op_from_exec(m_exec_t value) {
-  return ~M_EXEC_TYPE_OP & value;
-}
 
-int m_typeof_exec(m_exec_t value) {
-  int ret = M_OP_MASK & value;
-  if(ret == 0) printf("error: missing type mask for %x\n", value);
-  return ret;
-}
 
 
 // ==================== instructions
@@ -183,34 +329,55 @@ void m_stack_print_hex(m_stack_t *stack) {
   int i;
   for(i = stack->position - 1 ; i >= 0 ; i--) {
     printf("%02x ", (((char*)stack->root)[i] & 0xFF));
+    if(i % 8 == 0) printf("  ");
   }
   printf("\n");
+}
+
+// kinda dangerous if applied to a non-m_obj_t stack
+void _m_stack_print_obj(m_stack_t *stack) {
+  int i;
+  int len = (stack->position / sizeof(m_obj_t*));
+  for(i = len - 1 ; i >= 0 ; i--) {
+    write((m_obj_t*)(((long*)stack->root)[i]));
+    printf(" ");
+  }
+  printf("\n");
+}
+
+void m_exec_print(m_machine_t *m) {
+  _m_stack_print_obj(&m->exec);
 }
 
 int main() {
   m_machine_t _cpu, *cpu = &_cpu;
   m_machine_init(cpu);
 
+  /* m_stack_exec_push(cpu, m_obj_from_boolean(1)); */
+  /* m_stack_exec_push(cpu, m_obj_from_op(OP_EXEC_DO_STAR_COUNT)); */
+  /* m_stack_exec_push(cpu, m_obj_from_integer(4)); */
+  /* m_stack_exec_push(cpu, m_obj_from_integer(1)); */
 
-  m_stack_exec_push(cpu, m_convert_exec_from_integer(0x7));
-  m_stack_exec_push(cpu, m_convert_exec_from_integer(0x15));
+  m_stack_exec_push(cpu, m_obj_from_op(OP_INTEGER_POP));
+  m_stack_exec_push(cpu, m_obj_from_integer(7));
+  m_stack_exec_push(cpu, m_obj_from_integer(15));
+  m_stack_exec_push(cpu, m_obj_from_op(OP_EXEC_IF));
+  m_stack_exec_push(cpu, m_obj_from_op(OP_INTEGER__GT_));
+  m_stack_exec_push(cpu, m_obj_from_integer(2));
+  m_stack_exec_push(cpu, m_obj_from_integer(3));
 
-  m_stack_exec_push(cpu, m_convert_exec_from_op(OP_EXEC_IF));
-  m_stack_exec_push(cpu, m_convert_exec_from_op(OP_INTEGER__GT_));
-  m_stack_exec_push(cpu, m_convert_exec_from_integer(3));
-  m_stack_exec_push(cpu, m_convert_exec_from_integer(2));
 
   printf("state: \n");
-  printf("ints:   "); m_stack_print_hex(&cpu->integer);
-  printf("booleans:   "); m_stack_print_hex(&cpu->boolean);
-  printf("exec:   "); m_stack_print_hex(&cpu->exec);
+  printf("ints:   ");       m_stack_print_hex(&cpu->integer);
+  printf("booleans:   ");   m_stack_print_hex(&cpu->boolean);
+  printf("exec:   ");       m_exec_print(cpu);
   printf("\n");
 
   while (m_apply(cpu)) {
     printf("state: \n");
-    printf("ints:   "); m_stack_print_hex(&cpu->integer);
+    printf("ints:   ");     m_stack_print_hex(&cpu->integer);
     printf("booleans:   "); m_stack_print_hex(&cpu->boolean);
-    printf("exec:   "); m_stack_print_hex(&cpu->exec);
+    printf("exec:   ");     m_exec_print(cpu);
     printf("\n");
   }
 
