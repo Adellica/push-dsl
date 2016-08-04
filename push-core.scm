@@ -91,8 +91,8 @@
 ;; ==================== exec
 
 ;; (define-instruction exec.yankdup
-;;   ( ((yank-index) exec) )
-;;   (push exec (peek exec yank-index)))
+;;   ( ((index) integer) )
+;;   (push exec (peek exec index)))
 
 (define-instruction exec.if
   ( ((then else) exec)
