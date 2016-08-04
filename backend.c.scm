@@ -24,6 +24,7 @@
 ;; convert from scheme-identifiers to c-identifiers
 (define (identifier op)
   (->> `(("_" . "__") ;; <-- no name conflicts
+         ("else" . "_else")
          ("." . "_")
          ("+" . "_plus_")
          ("-" . "_minus_")

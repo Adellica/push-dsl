@@ -95,11 +95,11 @@
 ;;   (push exec (peek exec yank-index)))
 
 (define-instruction exec.if
-  ( ((then otherwise) exec)
+  ( ((then else) exec)
     ((test)           boolean) )
   (if test
       (push exec then)
-      (push exec otherwise)))
+      (push exec else)))
 
 ;; TODO
 ;; (define-instruction exec.length

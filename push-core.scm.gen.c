@@ -173,19 +173,19 @@ void exec_do_star_range (m_machine_t *m) {
 }
 
 // exec.if
-// ((((then otherwise) exec) ((test) boolean))
-//  (if test (push exec then) (push exec otherwise)))
+// ((((then else) exec) ((test) boolean))
+//  (if test (push exec then) (push exec else)))
 void exec_if (m_machine_t *m) {
     if (m_stack_exec_length(m) < 2 || m_stack_boolean_length(m) < 1) {
         return;
     }
     m_exec_t then = m_stack_exec_pop(m);
-    m_exec_t otherwise = m_stack_exec_pop(m);
+    m_exec_t _else = m_stack_exec_pop(m);
     m_boolean_t test = m_stack_boolean_pop(m);
     if (test) {
         m_stack_exec_push(m, then);
     } else {
-        m_stack_exec_push(m, otherwise);
+        m_stack_exec_push(m, _else);
     }
 }
 
