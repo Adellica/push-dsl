@@ -193,7 +193,7 @@
         `(%fun int m_apply_op (((%pointer m_machine_t) m)
                                (m_op_t op))
 
-               (printf "=== applying op %s\n" (lookup op))
+               ;;(printf "=== applying op %s\n" (lookup op))
                (switch op
                        ,@(map (lambda (op) `(case ,(op->identifier op) (,(identifier op) m)))
                               (map car (instruction-table)))
@@ -203,7 +203,7 @@
       (define m-apply-literal
         `(%fun int m_apply_literal (((%pointer m_machine_t) m)
                                     (m_exec_t literal))
-               (printf "=== applying literal %08x\n" literal)
+               ;;(printf "=== applying literal %08x\n" literal)
                (switch ,(c-expr `(,(requires 'm_typeof_obj) literal))
                        ,@(map
                           (lambda (type)

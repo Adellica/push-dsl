@@ -376,7 +376,6 @@ void integer_pop (m_machine_t *m) {
 }
 
 int m_apply_op (m_machine_t *m, m_op_t op) {
-    printf("=== applying op %s\n", lookup(op));
     switch (op) {
         case OP_BOOLEAN_AND:
             boolean_and(m);
@@ -449,7 +448,6 @@ int m_apply_op (m_machine_t *m, m_op_t op) {
 }
 
 int m_apply_literal (m_machine_t *m, m_exec_t literal) {
-    printf("=== applying literal %08x\n", literal);
     switch (m_typeof_obj(literal)) {
         case M_TYPE_INTEGER:
             m_stack_integer_push(m, m_obj_to_integer(literal));
