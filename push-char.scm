@@ -42,7 +42,7 @@
 
 (define-instruction char.yankdup
   ( ((index) integer) )
-  (yankdup char index))
+  (push char (peek char index)))
 
 (define-instruction char.shove
   ( ((index) integer)
