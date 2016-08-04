@@ -136,12 +136,12 @@ void write_pair(m_obj_t *pair) {
   car_obj = car(pair);
   cdr_obj = cdr(pair);
   write(car_obj);
-  if (cdr_obj->type == M_TYPE_PAIR) {
+  if (m_typeof_obj(cdr_obj) == M_TYPE_PAIR) {
     printf(" ");
     write_pair(cdr_obj);
   }
-  else if (cdr_obj->type == M_TYPE_NIL) {
-    return;
+  else if (m_typeof_obj(cdr_obj) == M_TYPE_NIL) {
+
   }
   else {
     printf(" . ");
