@@ -349,6 +349,14 @@ void m_exec_print(m_machine_t *m) {
   _m_stack_print_obj(&m->exec);
 }
 
+void m_integer_print(m_machine_t *m) {
+  int i;
+  for(i = (m->integer.position / sizeof(m_integer_t)) - 1 ; i >= 0 ; i--) {
+    printf("%8d ", (((m_integer_t*)m->integer.root)[i]));
+  }
+  printf("\n");
+}
+
 int main() {
   m_machine_t _cpu, *cpu = &_cpu;
   m_machine_init(cpu);
@@ -358,28 +366,60 @@ int main() {
   /* m_stack_exec_push(cpu, m_obj_from_integer(4)); */
   /* m_stack_exec_push(cpu, m_obj_from_integer(1)); */
 
-  m_stack_exec_push(cpu, m_obj_from_op(OP_INTEGER_POP));
-  m_stack_exec_push(cpu, m_obj_from_integer(7));
-  m_stack_exec_push(cpu, m_obj_from_integer(15));
-  m_stack_exec_push(cpu, m_obj_from_op(OP_EXEC_IF));
-  m_stack_exec_push(cpu, m_obj_from_op(OP_INTEGER__GT_));
-  m_stack_exec_push(cpu, m_obj_from_integer(2));
-  m_stack_exec_push(cpu, m_obj_from_integer(3));
+  /* m_stack_exec_push(cpu, m_obj_from_op(OP_INTEGER_POP)); */
+  /* m_stack_exec_push(cpu, m_obj_from_integer(7)); */
+  /* m_stack_exec_push(cpu, m_obj_from_integer(15)); */
+  /* m_stack_exec_push(cpu, m_obj_from_op(OP_EXEC_IF)); */
+  /* m_stack_exec_push(cpu, m_obj_from_op(OP_INTEGER__GT_)); */
+  /* m_stack_exec_push(cpu, m_obj_from_integer(2)); */
+  /* m_stack_exec_push(cpu, m_obj_from_integer(3)); */
+
+  // silly benchmark:
+  m_obj_t *body =
+    m_obj_cons(m_obj_from_integer(1),
+               m_obj_cons(m_obj_from_integer(2),
+                          m_obj_cons(m_obj_from_op(OP_INTEGER__GT_),
+                                     m_obj_cons(m_obj_from_op(OP_EXEC_IF),
+                                                m_obj_cons(m_obj_from_integer(100),
+                                                           m_obj_cons(m_obj_from_integer(200),
+                                                                      m_obj_cons(m_obj_from_op(OP_INTEGER_POP), &the_empty_list)))))));
+  m_stack_exec_push(cpu, body);
+  m_stack_exec_push(cpu, m_obj_from_op(OP_EXEC_DO_STAR_TIMES));
+  m_stack_exec_push(cpu, m_obj_from_integer(1000000));
 
 
-  printf("state: \n");
-  printf("ints:   ");       m_stack_print_hex(&cpu->integer);
+  /* // FACTORIAL: */
+  /* m_stack_exec_push(cpu, m_obj_from_op(OP_INTEGER__STAR_)); */
+  /* m_stack_exec_push(cpu, m_obj_from_op(OP_EXEC_DO_STAR_RANGE)); */
+  /* m_stack_exec_push(cpu, m_obj_from_integer(10)); */
+  /* m_stack_exec_push(cpu, m_obj_from_op(OP_INTEGER_MAX)); */
+  /* m_stack_exec_push(cpu, m_obj_from_integer(1)); */
+
+  //( 1 INTEGER.MAX 1 EXEC.DO*RANGE INTEGER.* )
+
+
+  //  m_stack_exec_push(cpu, );
+  //  m_stack_exec_push(cpu, m_obj_cons(m_obj_from_integer(123), m_obj_from_integer(88)));
+
+  printf("ints:   ");       m_integer_print(cpu);
   printf("booleans:   ");   m_stack_print_hex(&cpu->boolean);
   printf("exec:   ");       m_exec_print(cpu);
   printf("\n");
 
+  int ticks = 0;
   while (m_apply(cpu)) {
-    printf("state: \n");
-    printf("ints:   ");     m_stack_print_hex(&cpu->integer);
-    printf("booleans:   "); m_stack_print_hex(&cpu->boolean);
-    printf("exec:   ");     m_exec_print(cpu);
-    printf("\n");
+    ticks++;
+  /*   printf("ints:   ");     m_integer_print(cpu); */
+  /*   printf("booleans:   "); m_stack_print_hex(&cpu->boolean); */
+  /*   printf("exec:   ");     m_exec_print(cpu); */
+  /*   printf("\n"); */
   }
+
+  printf("end at %d ticks\n", ticks);
+  printf("ints:   ");       m_integer_print(cpu);
+  printf("booleans:   ");   m_stack_print_hex(&cpu->boolean);
+  printf("exec:   ");       m_exec_print(cpu);
+  printf("\n");
 
   m_machine_free(cpu);
   return 0;
