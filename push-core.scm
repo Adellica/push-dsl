@@ -135,8 +135,7 @@
 (define-instruction exec.do*times
   ( ((todo) exec)
     ((num-times) integer) )
-  (push exec todo)
-  (push exec 'integer.pop) ;;; this doesn't work yet, we need cons :(
+  (push exec (cons 'integer.pop todo))
   (push exec 'exec.do*range)
   (push exec (- num-times 1))
   (push exec 0))

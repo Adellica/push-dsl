@@ -105,8 +105,7 @@ char * lookup (m_op_t op) {
 
 // exec.do*times
 // ((((todo) exec) ((num-times) integer))
-//  (push exec todo)
-//  (push exec 'integer.pop)
+//  (push exec (cons 'integer.pop todo))
 //  (push exec 'exec.do*range)
 //  (push exec (- num-times 1))
 //  (push exec 0))
@@ -116,8 +115,7 @@ void exec_do_star_times (m_machine_t *m) {
     }
     m_exec_t todo = m_stack_exec_pop(m);
     m_integer_t num_minus_times = m_stack_integer_pop(m);
-    m_stack_exec_push(m, todo);
-    m_stack_exec_push(m, m_obj_from_op(OP_INTEGER_POP));
+    m_stack_exec_push(m, m_obj_cons(m_obj_from_op(OP_INTEGER_POP), todo));
     m_stack_exec_push(m, m_obj_from_op(OP_EXEC_DO_STAR_RANGE));
     m_stack_exec_push(m, m_obj_from_integer((num_minus_times - 1)));
     m_stack_exec_push(m, m_obj_from_integer(0));

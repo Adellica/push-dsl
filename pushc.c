@@ -79,7 +79,7 @@ m_op_t m_obj_to_op(m_obj_t *obj) {
   return (long)obj >> 2;
 }
 
-m_obj_t *cons(m_obj_t *car, m_obj_t *cdr) {
+m_obj_t *m_obj_cons(m_obj_t *car, m_obj_t *cdr) {
   m_obj_t *obj;
     
   obj = alloc_object();
