@@ -203,7 +203,7 @@
       (define m-apply-literal
         `(%fun int m_apply_literal (((%pointer m_machine_t) m)
                                     (m_exec_t literal))
-               ;;(printf "=== applying literal %08x\n" literal)
+               ;; (printf "=== applying literal %010p " literal) (write literal) (printf "\n")
                (switch ,(c-expr `(,(requires 'm_typeof_obj) literal))
                        ,@(map
                           (lambda (type)
