@@ -356,9 +356,15 @@ void m_exec_print(m_machine_t *m) {
 void m_integer_print(m_machine_t *m) {
   int i;
   for(i = (m->integer.position / sizeof(m_integer_t)) - 1 ; i >= 0 ; i--) {
-    printf("%8d ", (((m_integer_t*)m->integer.root)[i]));
+    printf("%d ", (((m_integer_t*)m->integer.root)[i]));
   }
-  printf("\n");
+}
+
+void m_boolean_print(m_machine_t *m) {
+  int i;
+  for(i = (m->boolean.position / sizeof(m_boolean_t)) - 1 ; i >= 0 ; i--) {
+    printf("#%c ", (((m_boolean_t*)m->boolean.root)[i]) ? 't' : 'f');
+  }
 }
 
 
@@ -418,7 +424,7 @@ int main_test() {
 
   printf("end at %d ticks\n", ticks);
   printf("ints:   ");       m_integer_print(cpu);
-  printf("booleans:   ");   m_stack_print_hex(&cpu->boolean);
+  printf("booleans:   ");   m_boolean_print(cpu);
   printf("exec:   ");       m_exec_print(cpu);
   printf("\n");
 
