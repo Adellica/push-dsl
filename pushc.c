@@ -346,7 +346,6 @@ void _m_stack_print_obj(m_stack_t *stack) {
     write((m_obj_t*)(((long*)stack->root)[i]));
     printf(" ");
   }
-  printf("\n");
 }
 
 void m_exec_print(m_machine_t *m) {
