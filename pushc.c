@@ -257,12 +257,6 @@ void *m_stack_pop_pointer(m_stack_t *s) {
 }
 
 
-/* typedef struct tf_item { */
-/*   int size; */
-/*   int type; */
-/*   char* data; */
-/* } tf_item; */
-
 
 typedef struct m_machine_t {
   m_stack_t integer;
@@ -307,12 +301,10 @@ int m_stack_boolean_pop(m_machine_t *m) {
 }
 
 int m_stack_exec_length(m_machine_t *m) {
-  // TODO
   return m->exec.position / sizeof(m_exec_t);
 }
 void m_stack_exec_push(m_machine_t *m, m_exec_t value) {
   m_stack_push(&m->exec, &value, sizeof(m_exec_t));
-  //m_stack_push(&m->exec, (void*)&value->type, sizeof(value->type));
 }
 m_exec_t m_stack_exec_pop(m_machine_t *m) {
   return *((m_exec_t*)m_stack_pop(&m->exec, sizeof(m_exec_t)));
@@ -433,5 +425,3 @@ int main_test() {
   m_machine_free(cpu);
   return 0;
 }
-
-// ((me.surrounding-smells integer.< code.do*times) (-1 0 1) ((vect.fromintegers) code.quote ((0 (vect.fromintegers ((exec.if (() integer.dup) 1 exec.if -1)))) ())))
