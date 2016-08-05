@@ -315,7 +315,7 @@ m_exec_t m_stack_exec_pop(m_machine_t *m) {
 
 
 m_boolean_t m_boolean_from_integer(m_integer_t value) {
-  return value;
+  return value && 1;
 }
 m_integer_t m_integer_from_boolean(m_boolean_t value) {
   return value;
