@@ -140,7 +140,7 @@
     (('not args ...) `(!  ,@(rewrite args env 'boolean)))
 
     (('begin body ...) `(%begin ,@(map (cut rewrite <> env #f) body)))
-    (('void body ...)  `(%begin 1))
+    (('void body ...)  (dsp ""))
 
     (('quote op)
      (case tt

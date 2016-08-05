@@ -159,7 +159,7 @@ void exec_do_star_range (m_machine_t *m) {
     m_integer_t current = m_stack_integer_pop(m);
     m_stack_integer_push(m, current);
     if (current == destination) {
-        1;
+        
     } else {
         m_stack_exec_push(m, todo);
         m_stack_exec_push(m, m_obj_from_op(OP_EXEC_DO_STAR_RANGE));
@@ -372,7 +372,7 @@ void integer_pop (m_machine_t *m) {
         return;
     }
     m_integer_t e0 = m_stack_integer_pop(m);
-    1;
+    
 }
 
 int m_apply_op (m_machine_t *m, m_op_t op) {
