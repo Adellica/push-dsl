@@ -232,6 +232,12 @@ void m_stack_push(m_stack_t *stack, void* data, tf_size len) {
   stack->position += len;
 }
 
+// push the value of the pointer - don't push the data the p points to!
+void m_stack_push_pointer(m_stack_t *s, void *p) {
+  //printf("pushing pointer %p\n", p);
+  m_stack_push(s, &p, sizeof(void*));
+}
+
 // place a simple blob of fixed size onto stack. this size much be known at pop-time!
 void* m_stack_pop(m_stack_t *stack, tf_size len) {
   if(stack->position < len) {
@@ -243,6 +249,12 @@ void* m_stack_pop(m_stack_t *stack, tf_size len) {
 }
 
 
+// push the value of the pointer - don't push the data the p points to!
+void *m_stack_pop_pointer(m_stack_t *s) {
+  void* p = *((void**)m_stack_pop(s, sizeof(void*)));
+  //printf("poping pointer %x\n", p);
+  return p;
+}
 
 
 /* typedef struct tf_item { */
@@ -357,63 +369,60 @@ void m_integer_print(m_machine_t *m) {
   printf("\n");
 }
 
-int main() {
+
+int m_apply (m_machine_t *m) {
+    if (m_stack_exec_length(m) < 1) {
+        return 0;
+    }
+    m_exec_t instruction = m_stack_exec_pop(m);
+    int ret;
+    m_obj_t *next;
+    m_stack_t tmps;
+
+  retry:
+    switch (m_typeof_obj(instruction)) {
+        case M_TYPE_OP:
+            ret = m_apply_op(m, m_obj_to_op(instruction));
+            break;
+        case M_TYPE_PAIR:
+          next = m_obj_cdr(instruction);
+          m_stack_init(&tmps);
+          // push each element onto stack in reverse order
+          while (!is_the_empty_list(next)) {
+            // TODO: next.refcount--
+            if(m_typeof_obj(next) != M_TYPE_PAIR) {
+              m_stack_push_pointer(&tmps, next);
+              break;
+            }
+            m_stack_push_pointer(&tmps, m_obj_car(next));
+            next = m_obj_cdr(next);
+            // handle improper lists for efficiency (no ensure-list needed)
+          }
+          while(tmps.position > 0) {
+            m_stack_exec_push(m, m_stack_pop_pointer(&tmps));
+          }
+          instruction = m_obj_car(instruction);
+          m_stack_free(&tmps);
+          goto retry;
+          break;
+        case M_TYPE_NIL:
+            
+            break;
+        default:
+            ret = m_apply_literal(m, instruction);
+            break;
+    }
+    return ret;
+}
+
+
+// example program skeleton
+int main_test() {
   m_machine_t _cpu, *cpu = &_cpu;
   m_machine_init(cpu);
 
-  /* m_stack_exec_push(cpu, m_obj_from_boolean(1)); */
-  /* m_stack_exec_push(cpu, m_obj_from_op(OP_EXEC_DO_STAR_COUNT)); */
-  /* m_stack_exec_push(cpu, m_obj_from_integer(4)); */
-  /* m_stack_exec_push(cpu, m_obj_from_integer(1)); */
-
-  /* m_stack_exec_push(cpu, m_obj_from_op(OP_INTEGER_POP)); */
-  /* m_stack_exec_push(cpu, m_obj_from_integer(7)); */
-  /* m_stack_exec_push(cpu, m_obj_from_integer(15)); */
-  /* m_stack_exec_push(cpu, m_obj_from_op(OP_EXEC_IF)); */
-  /* m_stack_exec_push(cpu, m_obj_from_op(OP_INTEGER__GT_)); */
-  /* m_stack_exec_push(cpu, m_obj_from_integer(2)); */
-  /* m_stack_exec_push(cpu, m_obj_from_integer(3)); */
-
-  // silly benchmark:
-  m_obj_t *body =
-    m_obj_cons(m_obj_from_integer(1),
-               m_obj_cons(m_obj_from_integer(2),
-                          m_obj_cons(m_obj_from_op(OP_INTEGER__GT_),
-                                     m_obj_cons(m_obj_from_op(OP_EXEC_IF),
-                                                m_obj_cons(m_obj_from_integer(100),
-                                                           m_obj_cons(m_obj_from_integer(200),
-                                                                      m_obj_cons(m_obj_from_op(OP_INTEGER_POP), &the_empty_list)))))));
-  m_stack_exec_push(cpu, body);
-  m_stack_exec_push(cpu, m_obj_from_op(OP_EXEC_DO_STAR_TIMES));
-  m_stack_exec_push(cpu, m_obj_from_integer(1000000));
-
-
-  /* // FACTORIAL: */
-  /* m_stack_exec_push(cpu, m_obj_from_op(OP_INTEGER__STAR_)); */
-  /* m_stack_exec_push(cpu, m_obj_from_op(OP_EXEC_DO_STAR_RANGE)); */
-  /* m_stack_exec_push(cpu, m_obj_from_integer(10)); */
-  /* m_stack_exec_push(cpu, m_obj_from_op(OP_INTEGER_MAX)); */
-  /* m_stack_exec_push(cpu, m_obj_from_integer(1)); */
-
-  //( 1 INTEGER.MAX 1 EXEC.DO*RANGE INTEGER.* )
-
-
-  //  m_stack_exec_push(cpu, );
-  //  m_stack_exec_push(cpu, m_obj_cons(m_obj_from_integer(123), m_obj_from_integer(88)));
-
-  printf("ints:   ");       m_integer_print(cpu);
-  printf("booleans:   ");   m_stack_print_hex(&cpu->boolean);
-  printf("exec:   ");       m_exec_print(cpu);
-  printf("\n");
-
   int ticks = 0;
-  while (m_apply(cpu)) {
-    ticks++;
-  /*   printf("ints:   ");     m_integer_print(cpu); */
-  /*   printf("booleans:   "); m_stack_print_hex(&cpu->boolean); */
-  /*   printf("exec:   ");     m_exec_print(cpu); */
-  /*   printf("\n"); */
-  }
+  while (m_apply(cpu)) { ticks++; }
 
   printf("end at %d ticks\n", ticks);
   printf("ints:   ");       m_integer_print(cpu);

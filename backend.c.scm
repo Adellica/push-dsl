@@ -241,27 +241,5 @@
            ;; an op is an atom that names an instruction.
            (c-expr m-apply-op) nl
            (c-expr m-apply-literal) nl
-
-           ;; an instruction is any element that can be on the exec stack.
-           (let ((specs '(((instruction) exec))))
-             (c-expr
-              `(%fun int m_apply (((%pointer m_machine_t) m))
-
-                     (if ,(pop-check specs) (return 0))
-                     ,(pop-declare specs)
-                     (%var int ret)
-                     (: retry)
-                     (switch ;; fmt-c switch hack:
-                      ,(c-expr `(,(requires 'm_typeof_obj) instruction))
-                      (case M_TYPE_OP
-                        (= ret (m_apply_op m (,(requires 'm_obj_to_op)
-                                              instruction))))
-                      (case M_TYPE_PAIR
-                        (m_stack_exec_push m (m_obj_cdr instruction))
-                        (= instruction (m_obj_car instruction))
-                        (goto retry))
-                      (default
-                        (= ret (m_apply_literal m instruction))))
-                     ret)))))))
-
+           ))))
 

@@ -459,26 +459,3 @@ int m_apply_literal (m_machine_t *m, m_exec_t literal) {
     return 1;
 }
 
-int m_apply (m_machine_t *m) {
-    if (m_stack_exec_length(m) < 1) {
-        return 0;
-    }
-    m_exec_t instruction = m_stack_exec_pop(m);
-    int ret;
-    
-  retry:
-    switch (m_typeof_obj(instruction)) {
-        case M_TYPE_OP:
-            ret = m_apply_op(m, m_obj_to_op(instruction));
-            break;
-        case M_TYPE_PAIR:
-            m_stack_exec_push(m, m_obj_cdr(instruction));
-            instruction = m_obj_car(instruction);
-            goto retry;
-            break;
-        default:
-            ret = m_apply_literal(m, instruction);
-            break;
-    }
-    return ret;
-}
