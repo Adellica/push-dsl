@@ -78,11 +78,13 @@
   (push integer (* e0 e1)))
 
 (define-instruction integer./
-  ( ((e0 e1) integer) )
+  ( ((e0 e1) integer)
+    (abort (= e0 0)))
   (push integer (/ e1 e0)))
 
 (define-instruction integer.%
-  ( ((e0 e1) integer) )
+  ( ((e0 e1) integer)
+    (abort (= e0 0)) )
   (push integer (modulo e1 e0)))
 
 (define-instruction integer.<
@@ -150,7 +152,8 @@
 ;; TODO: why do we need `copy-tree`?
 (define-instruction exec.do*range
   ( ((todo) exec)
-    ((destination current) integer) )
+    ((destination current) integer)
+    (abort (< destination 1) ))
   (push integer current)
   (if (= current destination)
       (void)
@@ -165,7 +168,8 @@
 
 (define-instruction exec.do*count
   ( ((todo) exec)
-    ((num-times) integer) )
+    ((num-times) integer)
+    (abort  (< num-times 1)) )
   (push exec todo)
   (push exec 'exec.do*range)
   (push exec (- num-times 1))
@@ -173,7 +177,8 @@
 
 (define-instruction exec.do*times
   ( ((todo) exec)
-    ((num-times) integer) )
+    ((num-times) integer)
+    (abort (< num-times 1)) )
   (push exec (cons 'integer.pop todo))
   (push exec 'exec.do*range)
   (push exec (- num-times 1))

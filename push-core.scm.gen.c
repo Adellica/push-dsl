@@ -104,7 +104,7 @@ char * lookup (m_op_t op) {
 
 
 // exec.do*times
-// ((((todo) exec) ((num-times) integer))
+// ((((todo) exec) ((num-times) integer) (abort (< num-times 1)))
 //  (push exec (cons 'integer.pop todo))
 //  (push exec 'exec.do*range)
 //  (push exec (- num-times 1))
@@ -115,6 +115,11 @@ void exec_do_star_times (m_machine_t *m) {
     }
     m_exec_t todo = m_stack_exec_pop(m);
     m_integer_t num_minus_times = m_stack_integer_pop(m);
+    if (num_minus_times < 1) {
+        m_stack_integer_push(m, num_minus_times);
+        m_stack_exec_push(m, todo);
+        return;
+    }
     m_stack_exec_push(m, m_obj_cons(m_obj_from_op(OP_INTEGER_POP), todo));
     m_stack_exec_push(m, m_obj_from_op(OP_EXEC_DO_STAR_RANGE));
     m_stack_exec_push(m, m_obj_from_integer((num_minus_times - 1)));
@@ -122,7 +127,7 @@ void exec_do_star_times (m_machine_t *m) {
 }
 
 // exec.do*count
-// ((((todo) exec) ((num-times) integer))
+// ((((todo) exec) ((num-times) integer) (abort (< num-times 1)))
 //  (push exec todo)
 //  (push exec 'exec.do*range)
 //  (push exec (- num-times 1))
@@ -133,6 +138,11 @@ void exec_do_star_count (m_machine_t *m) {
     }
     m_exec_t todo = m_stack_exec_pop(m);
     m_integer_t num_minus_times = m_stack_integer_pop(m);
+    if (num_minus_times < 1) {
+        m_stack_integer_push(m, num_minus_times);
+        m_stack_exec_push(m, todo);
+        return;
+    }
     m_stack_exec_push(m, todo);
     m_stack_exec_push(m, m_obj_from_op(OP_EXEC_DO_STAR_RANGE));
     m_stack_exec_push(m, m_obj_from_integer((num_minus_times - 1)));
@@ -140,7 +150,7 @@ void exec_do_star_count (m_machine_t *m) {
 }
 
 // exec.do*range
-// ((((todo) exec) ((destination current) integer))
+// ((((todo) exec) ((destination current) integer) (abort (< destination 1)))
 //  (push integer current)
 //  (if (= current destination)
 //    (void)
@@ -157,6 +167,12 @@ void exec_do_star_range (m_machine_t *m) {
     m_exec_t todo = m_stack_exec_pop(m);
     m_integer_t destination = m_stack_integer_pop(m);
     m_integer_t current = m_stack_integer_pop(m);
+    if (destination < 1) {
+        m_stack_integer_push(m, current);
+        m_stack_integer_push(m, destination);
+        m_stack_exec_push(m, todo);
+        return;
+    }
     m_stack_integer_push(m, current);
     if (current == destination) {
         
@@ -286,24 +302,34 @@ void integer__lt_ (m_machine_t *m) {
 }
 
 // integer.%
-// ((((e0 e1) integer)) (push integer (modulo e1 e0)))
+// ((((e0 e1) integer) (abort (= e0 0))) (push integer (modulo e1 e0)))
 void integer__percent_ (m_machine_t *m) {
     if (m_stack_integer_length(m) < 2) {
         return;
     }
     m_integer_t e0 = m_stack_integer_pop(m);
     m_integer_t e1 = m_stack_integer_pop(m);
+    if (e0 == 0) {
+        m_stack_integer_push(m, e1);
+        m_stack_integer_push(m, e0);
+        return;
+    }
     m_stack_integer_push(m, (e1 % e0));
 }
 
 // integer./
-// ((((e0 e1) integer)) (push integer (/ e1 e0)))
+// ((((e0 e1) integer) (abort (= e0 0))) (push integer (/ e1 e0)))
 void integer__divide_ (m_machine_t *m) {
     if (m_stack_integer_length(m) < 2) {
         return;
     }
     m_integer_t e0 = m_stack_integer_pop(m);
     m_integer_t e1 = m_stack_integer_pop(m);
+    if (e0 == 0) {
+        m_stack_integer_push(m, e1);
+        m_stack_integer_push(m, e0);
+        return;
+    }
     m_stack_integer_push(m, (e1 / e0));
 }
 

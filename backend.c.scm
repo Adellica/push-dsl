@@ -64,6 +64,16 @@
 (define (pop type)
   `(,(string->symbol (requires (conc "m_stack_" type "_pop"))) m))
 
+;; a stacklaration is a spec which defines variables to be popped and
+;; its stack. currently, a spec can be either a stacklaration or an
+;; abort statement.
+(define stacklaration?
+  (match-lambda
+   (((var ...) stack) #t)
+   (else #f)))
+
+(define (stacklarations specs) (filter stacklaration? specs))
+
 ;; (((then else) exec) ((test) boolean))
 (define (pop-declare specs)
   `(%begin
@@ -73,7 +83,19 @@
            (map (lambda (var)
                   `(%var ,(stack-c-type stack) ,(identifier var) ,(pop stack)))
                 (car spec))))
-       specs)))
+       (stacklarations specs))))
+
+;; push specs back on stack in reverse order. this should undo the
+;; pop-declare safely.
+(define (unpop specs)
+  `(%begin
+    ,@(append-map
+       (match-lambda
+        (((vars ...) stack)
+         (map (lambda (var)
+                `(,(requires (sconc "m_stack_" stack "_push")) m ,(identifier var)))
+              (reverse vars))))
+       (reverse (stacklarations specs)))))
 
 ;; produce an expression that passes if there are _NOT_ enough
 ;; arguments on the set of stacks in specs.
@@ -83,7 +105,7 @@
           (lambda (spec)
             (let ((vars (car spec)) (stack (cadr spec)))
               `(< (,(requires (sconc "m_stack_"  stack "_length")) m) ,(length vars))))
-          specs)))
+          (stacklarations specs))))
 
 ;; recursive core of the code generation. this will rewrite bits to
 ;; fit into C and expand define-instructions and friends.
@@ -119,15 +141,19 @@
     (('let-pop (specs ...) body ...)
 
      (let ((env (append
-                 (append-map (lambda (spec)
-                               (let ((vars (car spec))
-                                     (stack (cadr spec)))
-                                 (map (lambda (var)
-                                        (cons var stack)) vars)))
-                             specs)
+                 (append-map (match-lambda
+                              (((vars ...) stack)
+                               (map (lambda (var) (cons var stack)) vars)))
+                             (stacklarations specs))
                  env)))
        `(%begin (if ,(pop-check specs) (return))
                 ,(pop-declare specs)
+                ,@(map (match-lambda
+                        (('abort condition)
+                         `(if ,(rewrite condition env tt)
+                              (%begin ,(unpop specs)
+                                      (return)))))
+                       (filter (lambda (spec) (not (stacklaration? spec))) specs))
                 ,(rewrite `(begin ,@body) env #f))))
 
     (('cons a b) `(m_obj_cons ,(rewrite a env 'obj)
