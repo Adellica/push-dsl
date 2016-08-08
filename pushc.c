@@ -158,7 +158,7 @@ void write(m_obj_t *obj) {
     printf("#%c", m_obj_to_boolean(obj) ? 't' : 'f');
     break;
   case M_IMASK_INTEGER:
-    printf("%ld", m_obj_to_integer(obj));
+    printf("%d", m_obj_to_integer(obj));
     break;
   case M_IMASK_OP:
     printf("%s", lookup(m_obj_to_op(obj)));
