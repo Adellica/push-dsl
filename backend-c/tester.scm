@@ -23,7 +23,7 @@
 (define program '(1 1000000 exec.do*times (1 integer.+)))
 
 
-(system (conc "mzscheme schush.ss '" program "'"))
+(system (conc "mzscheme ../schush.ss '" program "'"))
 
 ;; (define program '(1.0 30000 exec.do*times (1.0001 float.*) integer.fromfloat))
 

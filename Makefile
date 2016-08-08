@@ -1,13 +1,7 @@
-all: push-core.scm.gen.c push-float.scm.gen.c
+all: backend-c
 
-push-core.scm.gen.c: backend.c.scm push-core.scm push-float.scm
-	csi -s backend.c.scm push-core.scm push-float.scm
+.PHONY: backend-c
 
-test.c: tester.scm
-	csi -s tester.scm test.c
+backend-c:
+	$(MAKE) -C backend-c
 
-test:	test.c
-	gcc -O9 ./test.c -o test
-
-new-test:
-	rm test.c
