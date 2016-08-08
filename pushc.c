@@ -29,7 +29,7 @@ m_obj_t *alloc_object(void) {
   m_obj_t *obj;
 
   obj = malloc(sizeof(m_obj_t));
-  printf("                                        ALLOC: %p\n", obj);
+  //printf("                                        ALLOC: %p\n", obj);
   if (obj == NULL) {
     fprintf(stderr, "out of memory\n");
     exit(1);
