@@ -103,6 +103,8 @@ char * lookup (m_op_t op) {
             return "integer.pop";
         case OP_INTEGER_ROT:
             return "integer.rot";
+        default:
+            return "?";
     }
 }
 

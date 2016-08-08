@@ -262,7 +262,8 @@
               (%fun (%pointer char) lookup ((m_op_t op))
                      (switch op
                              ,@(map (lambda (op) `(case ,(op->identifier op) ,(symbol->string op)))
-                                    (map car (instruction-table)))))
+                                    (map car (instruction-table)))
+                             (default "?")))
               ,nl
               ,expr ,nl
 
