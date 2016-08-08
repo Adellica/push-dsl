@@ -1,11 +1,7 @@
-all: pushc
+all: push-core.scm.gen.c push-float.scm.gen.c
 
-push-core.scm.gen.c: backend.c.scm push-core.scm
-	csi -s backend.c.scm push-core.scm
-
-pushc: pushc.c push-core.scm.gen.c
-	gcc pushc.c -o pushc
-
+push-core.scm.gen.c: backend.c.scm push-core.scm push-float.scm
+	csi -s backend.c.scm push-core.scm push-float.scm
 
 test.c: tester.scm
 	csi -s tester.scm test.c

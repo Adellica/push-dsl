@@ -9,6 +9,7 @@
 
 typedef unsigned char m_boolean_t;
 typedef signed   int  m_integer_t;
+typedef float         m_float_t;
 typedef unsigned char m_op_t;
 
 // ==================== dynamic types
@@ -39,15 +40,19 @@ m_obj_t *alloc_object(void) {
 
 // immediate masks. if lower bits are 00, it's pointer to an object
 //#define M_IMASK_PAIR      0b00
-#define M_IMASK_INTEGER   0b01
-#define M_IMASK_BOOLEAN   0b10
-#define M_IMASK_OP        0b11
+#define M_IMASK__BITSIZE       4
+#define M_IMASK__BITMASK  0b1111
+#define M_IMASK_INTEGER   0b0001
+#define M_IMASK_BOOLEAN   0b0010
+#define M_IMASK_OP        0b0011
+#define M_IMASK_FLOAT     0b0100
 
 #define M_TYPE_INTEGER   M_IMASK_INTEGER
 #define M_TYPE_BOOLEAN   M_IMASK_BOOLEAN
 #define M_TYPE_OP        M_IMASK_OP
-#define M_TYPE_PAIR      0b100
-#define M_TYPE_NIL       0b101
+#define M_TYPE_FLOAT     M_IMASK_FLOAT
+#define M_TYPE_PAIR      0b10000
+#define M_TYPE_NIL       0b10001
 
 m_obj_t the_empty_list = { M_TYPE_NIL };
 
@@ -56,28 +61,40 @@ char is_the_empty_list(m_obj_t *obj) {
 }
 
 m_obj_t *m_obj_from_integer(int value) {
-  return (void*)((long)(value << 2) | M_IMASK_INTEGER);
+  return (void*)((long)(value << M_IMASK__BITSIZE) | M_IMASK_INTEGER);
 }
 int m_obj_to_integer(m_obj_t *obj) {
   assert(((long)obj & M_IMASK_INTEGER) == M_IMASK_INTEGER);
-  return (long)obj >> 2;
+  return (long)obj >> M_IMASK__BITSIZE;
 }
 
 m_obj_t *m_obj_from_boolean(m_boolean_t value) {
-  return (void*)(((long)value << 2) | M_IMASK_BOOLEAN);
+  return (void*)(((long)value << M_IMASK__BITSIZE) | M_IMASK_BOOLEAN);
 }
 m_boolean_t m_obj_to_boolean(m_obj_t *obj) {
   assert(((long)obj & M_IMASK_BOOLEAN) == M_IMASK_BOOLEAN);
-  return (long)obj >> 2;
+  return (long)obj >> M_IMASK__BITSIZE;
 }
 
 m_obj_t *m_obj_from_op(m_op_t value) {
-  return (void*)(((long)value << 2) | M_IMASK_OP);
+  return (void*)(((long)value << M_IMASK__BITSIZE) | M_IMASK_OP);
 }
 m_op_t m_obj_to_op(m_obj_t *obj) {
   assert(((long)obj & M_IMASK_OP) == M_IMASK_OP);
-  return (long)obj >> 2;
+  return (long)obj >> M_IMASK__BITSIZE;
 }
+
+
+m_obj_t *m_obj_from_float(float value) {
+  long jvalue = *((long*)&value);
+  return (void*)((jvalue << M_IMASK__BITSIZE) | M_IMASK_FLOAT);
+}
+m_float_t m_obj_to_float(m_obj_t *obj) {
+  assert(((long)obj & M_IMASK_FLOAT) == M_IMASK_FLOAT);
+  long d = ((long)obj >> M_IMASK__BITSIZE);
+  return *(float*)(&d);
+}
+
 
 m_obj_t *m_obj_cons(m_obj_t *car, m_obj_t *cdr) {
   m_obj_t *obj;
@@ -112,9 +129,10 @@ void m_obj_set_cdr(m_obj_t *obj, m_obj_t* value) {
 
 int m_typeof_obj(m_obj_t *obj) {
 
-  switch ((long)obj & 0b11) {
+  switch ((long)obj & M_IMASK__BITMASK) {
   case M_IMASK_BOOLEAN: return M_IMASK_BOOLEAN;
   case M_IMASK_INTEGER: return M_IMASK_INTEGER;
+  case M_IMASK_FLOAT:   return M_IMASK_FLOAT;
   case M_IMASK_OP: return M_IMASK_OP;
   case 0:
     switch (obj->__type_) {
@@ -153,12 +171,15 @@ char *lookup (m_op_t);
 
 void write(m_obj_t *obj) {
   //printf("== write object: %p\n", obj);
-  switch ((long)obj & 0b11) {
+  switch ((long)obj & M_IMASK__BITMASK) {
   case M_IMASK_BOOLEAN:
     printf("#%c", m_obj_to_boolean(obj) ? 't' : 'f');
     break;
   case M_IMASK_INTEGER:
     printf("%d", m_obj_to_integer(obj));
+    break;
+  case M_IMASK_FLOAT:
+    printf("%f", m_obj_to_float(obj));
     break;
   case M_IMASK_OP:
     printf("%s", lookup(m_obj_to_op(obj)));
@@ -262,6 +283,7 @@ typedef struct m_machine_t {
   m_stack_t integer;
   m_stack_t boolean;
   m_stack_t exec;
+  m_stack_t sfloat; // s because float is a keyword ...
 } m_machine_t;
 
 void m_machine_init(m_machine_t *cpu) {
@@ -311,6 +333,17 @@ m_exec_t m_stack_exec_pop(m_machine_t *m) {
 }
 
 
+m_float_t m_stack_float_length(m_machine_t *m) {
+  return m->sfloat.position / sizeof(m_float_t);
+}
+void m_stack_float_push(m_machine_t *m, m_float_t value) {
+  m_stack_push(&m->sfloat, (void*)(m_float_t*)(&value), sizeof(m_float_t));
+}
+m_float_t m_stack_float_pop(m_machine_t *m) {
+  return *((m_float_t*)m_stack_pop(&m->sfloat, sizeof(m_float_t)));
+}
+
+
 // ==================== type conversion
 
 
@@ -318,6 +351,16 @@ m_boolean_t m_boolean_from_integer(m_integer_t value) {
   return value && 1;
 }
 m_integer_t m_integer_from_boolean(m_boolean_t value) {
+  return value;
+}
+
+m_float_t m_float_from_integer(m_integer_t value) {
+  return value;
+}
+m_integer_t m_integer_from_float(m_float_t value) {
+  return value;
+}
+m_boolean_t m_boolean_from_float(m_boolean_t value) {
   return value;
 }
 
