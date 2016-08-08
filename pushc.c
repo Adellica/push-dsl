@@ -290,12 +290,14 @@ void m_machine_init(m_machine_t *cpu) {
   m_stack_init(&cpu->integer);
   m_stack_init(&cpu->boolean);
   m_stack_init(&cpu->exec);
+  m_stack_init(&cpu->sfloat);
 }
 
 void m_machine_free(m_machine_t *cpu) {
   m_stack_free(&cpu->integer);
   m_stack_free(&cpu->boolean);
   m_stack_free(&cpu->exec);
+  m_stack_free(&cpu->sfloat);
 }
 
 
